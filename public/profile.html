@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialSphere - Profile</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body class="authenticated">
+    <div class="container">
+        <div class="app-layout">
+            <!-- Left Sidebar -->
+            <aside class="left-sidebar">
+                <div class="card" style="position: sticky; top: 30px;">
+                    <ul class="nav-links">
+                        <li class="nav-item">
+                            <a href="feed.html" class="nav-link">
+                                <span class="nav-icon"><i class="fas fa-home"></i></span>
+                                Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" id="myProfileLink" class="nav-link active">
+                                <span class="nav-icon"><i class="fas fa-user"></i></span>
+                                Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" id="logoutBtn" class="nav-link">
+                                <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Profile Header -->
+                <div class="card create-post-card">
+                    <div class="profile-header">
+                        <img id="profilePic" src="https://via.placeholder.com/150" class="profile-avatar" alt="Profile">
+                        <h2 id="profileName" style="font-size: 1.5rem; margin-bottom: 5px;">User Name</h2>
+                        <p id="profileBio" style="color: var(--text-muted); margin-bottom: 15px;">No bio yet.</p>
+
+                        <div id="profileActions">
+                            <!-- Injected buttons (Edit or Follow) -->
+                        </div>
+
+                        <div class="profile-stats">
+                            <div class="stat-item">
+                                <span class="stat-value" id="followersCount">0</span>
+                                <span class="stat-label">Followers</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value" id="followingCount">0</span>
+                                <span class="stat-label">Following</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Posts</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit Profile Modal (Simple toggled div for now) -->
+                <div id="editProfileModal" class="card hidden" style="margin-bottom: 20px;">
+                    <h3>Edit Profile</h3>
+                    <form id="editProfileForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label>Bio</label>
+                            <textarea id="editBio" name="bio" class="form-control"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Profile Picture</label>
+                            <input type="file" id="editProfilePic" name="image" class="form-control" accept="image/*">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleEditModal()">Cancel</button>
+                    </form>
+                </div>
+
+                <!-- User Posts -->
+                <h3 style="margin-bottom: 15px;">Posts</h3>
+                <div id="userPostsContainer">
+                    <div style="text-align: center; color: var(--text-muted);">Loading posts...</div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <div class="card">
+                    <h3 style="font-size: 1rem; margin-bottom: 15px;">About</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        SocialSphere is a mini social media platform built with Node.js and Vanilla JS.
+                    </p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Check auth
+        if (!App.state.user) {
+            window.location.href = '/index.html';
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const profileId = urlParams.get('id') || App.state.user.id;
+        const isOwnProfile = profileId == App.state.user.id;
+
+        // Set My Profile Link
+        document.getElementById('myProfileLink').href = `/profile.html?id=${App.state.user.id}`;
+
+        if (isOwnProfile) {
+            document.getElementById('myProfileLink').classList.add('active');
+        } else {
+            document.getElementById('myProfileLink').classList.remove('active');
+        }
+
+        // Load Profile Data
+        const loadProfile = async () => {
+            try {
+                const res = await fetch(`${API_URL}/users/${profileId}`);
+                if (!res.ok) throw new Error('User not found');
+                const user = await res.json();
+
+                document.getElementById('profileName').textContent = user.username;
+                document.getElementById('profileBio').textContent = user.bio || 'No bio yet.';
+                document.getElementById('profilePic').src = user.profile_pic_url || 'https://via.placeholder.com/150';
+                document.getElementById('followersCount').textContent = user.followersCount;
+                document.getElementById('followingCount').textContent = user.followingCount;
+                document.querySelector('.stat-item:nth-child(3) .stat-value').textContent = user.postsCount;
+
+                // Actions
+                const actionsDiv = document.getElementById('profileActions');
+                if (isOwnProfile) {
+                    actionsDiv.innerHTML = `<button class="btn btn-secondary" onclick="toggleEditModal()">Edit Profile</button>`;
+
+                    // Pre-fill edit form
+                    document.getElementById('editBio').value = user.bio || '';
+                    // File input cannot be pre-filled
+                } else {
+                    actionsDiv.innerHTML = `<button class="btn btn-primary" onclick="followUser(${user.id})">Follow</button>`;
+                }
+
+            } catch (err) {
+                alert('Failed to load profile');
+                console.error(err);
+            }
+        };
+
+        // Load User Posts
+        const loadUserPosts = async () => {
+            const container = document.getElementById('userPostsContainer');
+            try {
+                const res = await fetch(`${API_URL}/posts?user_id=${profileId}`);
+                const posts = await res.json();
+
+                if (posts.length === 0) {
+                    container.innerHTML = '<div class="card" style="text-align:center;color:var(--text-muted)">No posts yet.</div>';
+                    return;
+                }
+
+                container.innerHTML = posts.map(post => `
+                    <div class="card post-card" data-id="${post.id}">
+                        <div class="post-header">
+                            <img src="${post.profile_pic_url || 'https://via.placeholder.com/40'}" class="avatar" alt="Avatar">
+                            <div class="user-info">
+                                <h3><a href="/profile.html?id=${post.user_id}" style="color:inherit">${post.username}</a></h3>
+                                <span>${formatDate(post.created_at)}</span>
+                            </div>
+                        </div>
+                        <div class="post-content">
+                            ${post.content}
+                            ${post.image_url ? `<img src="${post.image_url}" class="post-image">` : ''}
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn like-btn" onclick="likePost(${post.id})">
+                                <i class="far fa-heart"></i> ${post.likesCount}
+                            </button>
+                            <button class="action-btn comment-btn">
+                                <i class="far fa-comment"></i> ${post.commentsCount}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="card" style="color:red">Failed to load posts</div>';
+            }
+        };
+
+        // Edit Profile
+        // Edit Profile
+        document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bio = document.getElementById('editBio').value;
+            const profilePicFile = document.getElementById('editProfilePic').files[0];
+
+            const formData = new FormData();
+            formData.append('bio', bio);
+            if (profilePicFile) {
+                formData.append('image', profilePicFile);
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/users/${profileId}`, {
+                    method: 'PUT',
+                    // headers: { 'Content-Type': 'multipart/form-data' }, // Let fetch set boundary
+                    body: formData
+                });
+
+                if (res.ok) {
+                    alert('Profile updated');
+                    location.reload();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to update');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        window.toggleEditModal = () => {
+            const modal = document.getElementById('editProfileModal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        };
+
+        window.followUser = async (targetId) => {
+            try {
+                const res = await fetch(`${API_URL}/users/${targetId}/follow`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentUserId: App.state.user.id })
+                });
+
+                if (res.ok) {
+                    alert('Followed!');
+                    loadProfile();
+                } else {
+                    const data = await res.json();
+                    alert(data.error);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        App.init();
+        loadProfile();
+        loadUserPosts();
+    </script>
+</body>
+
+</html>

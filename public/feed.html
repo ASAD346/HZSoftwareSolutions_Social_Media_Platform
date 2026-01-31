@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialSphere - Feed</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body class="authenticated">
+    <div class="container">
+        <div class="app-layout">
+            <!-- Left Sidebar -->
+            <aside class="left-sidebar">
+                <div class="card" style="position: sticky; top: 30px;">
+                    <ul class="nav-links">
+                        <li class="nav-item">
+                            <a href="feed.html" class="nav-link active">
+                                <span class="nav-icon"><i class="fas fa-home"></i></span>
+                                Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" id="myProfileLink" class="nav-link">
+                                <span class="nav-icon"><i class="fas fa-user"></i></span>
+                                Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" id="logoutBtn" class="nav-link">
+                                <span class="nav-icon"><i class="fas fa-sign-out-alt"></i></span>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main Feed -->
+            <main class="main-content">
+                <!-- Create Post -->
+                <div class="card create-post-card">
+                    <form id="createPostForm" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <textarea id="postContent" name="content" class="form-control" rows="3"
+                                placeholder="What's on your mind?" style="resize: none;" required></textarea>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="imagePreviewContainer" class="hidden"
+                            style="margin-bottom: 10px; position: relative; width: fit-content;">
+                            <img id="imagePreview" src="" style="max-height: 200px; border-radius: 8px;">
+                            <button type="button" id="removeImageBtn"
+                                style="position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">&times;</button>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <input type="file" id="postImage" name="image" accept="image/*" class="hidden">
+                            <button type="button" class="btn btn-secondary" style="border: none;"
+                                onclick="document.getElementById('postImage').click()">
+                                <i class="fas fa-image"></i> Photo
+                            </button>
+                            <button type="submit" class="btn btn-primary">Post</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Posts Container -->
+                <div id="postsContainer">
+                    <!-- Posts will be injected here -->
+                    <div style="text-align: center; color: var(--text-muted); padding: 20px;">Loading posts...</div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar -->
+            <aside class="right-sidebar">
+                <div class="card">
+                    <h3 style="font-size: 1rem; margin-bottom: 15px;">Who to follow</h3>
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">
+                        <p>No suggestions yet.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Check auth
+        if (!App.state.user) {
+            window.location.href = '/index.html';
+        }
+
+        // Set My Profile Link
+        document.getElementById('myProfileLink').href = `/profile.html?id=${App.state.user.id}`;
+
+        // Image Preview Logic
+        const postImageInput = document.getElementById('postImage');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+
+        postImageInput.addEventListener('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        removeImageBtn.addEventListener('click', function () {
+            postImageInput.value = '';
+            imagePreviewContainer.classList.add('hidden');
+            imagePreview.src = '';
+        });
+
+        // Load Posts
+        const loadPosts = async () => {
+            const container = document.getElementById('postsContainer');
+            try {
+                const res = await fetch(`${API_URL}/posts`);
+                const posts = await res.json();
+
+                if (posts.length === 0) {
+                    container.innerHTML = '<div class="card" style="text-align:center;color:var(--text-muted)">No posts yet. Be the first!</div>';
+                    return;
+                }
+
+                container.innerHTML = posts.map(post => `
+                    <div class="card post-card" data-id="${post.id}">
+                        <div class="post-header">
+                            <img src="${post.profile_pic_url || 'https://via.placeholder.com/40'}" class="avatar" alt="Avatar">
+                            <div class="user-info">
+                                <h3><a href="/profile.html?id=${post.user_id}" style="color:inherit">${post.username}</a></h3>
+                                <span>${formatDate(post.created_at)}</span>
+                            </div>
+                        </div>
+                        <div class="post-content">
+                            ${post.content}
+                            ${post.image_url ? `<img src="${post.image_url}" class="post-image">` : ''}
+                        </div>
+                        <div class="post-actions">
+                            <button class="action-btn like-btn" onclick="likePost(${post.id})">
+                                <i class="far fa-heart"></i> ${post.likesCount}
+                            </button>
+                            <button class="action-btn comment-btn">
+                                <i class="far fa-comment"></i> ${post.commentsCount}
+                            </button>
+                            ${post.user_id === App.state.user.id ? `
+                                <button class="action-btn" onclick="deletePost(${post.id})" style="color: #ef4444; margin-left: auto;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="card" style="color:red">Failed to load posts</div>';
+            }
+        };
+
+        // Create Post
+        document.getElementById('createPostForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = document.getElementById('postContent').value;
+            const imageFile = document.getElementById('postImage').files[0];
+
+            const formData = new FormData();
+            formData.append('user_id', App.state.user.id);
+            formData.append('content', content);
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            try {
+                // Determine if we need to send generic JSON or FormData
+                // Actually creating post always supports FormData now in backend
+                const res = await fetch(`${API_URL}/posts`, {
+                    method: 'POST',
+                    // headers: { 'Content-Type': 'multipart/form-data' }, // FETCH AUTOMATICALLY SETS BOUNDARY FOR FORMDATA - DO NOT SET HEADER MANUALLY
+                    body: formData
+                });
+
+                if (res.ok) {
+                    document.getElementById('postContent').value = '';
+                    document.getElementById('postImage').value = '';
+                    imagePreviewContainer.classList.add('hidden');
+                    loadPosts(); // Reload feed
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to post');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        // Like Post
+        window.likePost = async (postId) => {
+            try {
+                const res = await fetch(`${API_URL}/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: App.state.user.id })
+                });
+                if (res.ok) {
+                    loadPosts(); // Brute force refresh for simplicity
+                }
+            } catch (err) { console.error(err); }
+        };
+
+        // Delete Post
+        window.deletePost = async (postId) => {
+            if (!confirm('Are you sure?')) return;
+            try {
+                const res = await fetch(`${API_URL}/posts/${postId}`, { method: 'DELETE' });
+                if (res.ok) loadPosts();
+            } catch (err) { console.error(err); }
+        };
+
+        // Initialize
+        App.init();
+        loadPosts();
+    </script>
+</body>
+
+</html>
