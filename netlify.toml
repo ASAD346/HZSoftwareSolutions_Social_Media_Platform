@@ -4,6 +4,7 @@
 
 [functions]
   node_bundler = "esbuild"
+  external_node_modules = ["pg", "pg-hstore"] # Ensure pg is not bundled weirdly
 
 [[redirects]]
   # Redirect all API calls to the serverless function
