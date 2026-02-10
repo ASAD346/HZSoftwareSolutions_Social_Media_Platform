@@ -2,12 +2,9 @@ const multer = require('multer');
 const path = require('path');
 
 // Set storage engine
-const storage = multer.diskStorage({
-    destination: './public/uploads/',
-    filename: function (req, file, cb) {
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-    }
-});
+// Set storage engine
+// Netlify/Lambda is Read-Only, so we cannot use diskStorage
+const storage = multer.memoryStorage();
 
 // Init upload
 const upload = multer({
