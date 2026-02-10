@@ -1,0 +1,19 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  # Redirect all API calls to the serverless function
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  # Redirect all other calls to index.html for SPA (if handled client-side) or let Netlify serve static
+  # Since server.js had a wildcard catch-all, we might want that here too if it's SPA
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -5,8 +5,8 @@ const db = require('../config/db');
 // Get generic user profile by ID
 router.get('/:id', async (req, res) => {
     try {
-        const [users] = await db.execute(
-            'SELECT id, username, email, bio, profile_pic_url, created_at FROM users WHERE id = ?',
+        const { rows: users } = await db.query(
+            'SELECT id, username, email, bio, profile_pic_url, created_at FROM users WHERE id = $1',
             [req.params.id]
         );
 
@@ -17,16 +17,16 @@ router.get('/:id', async (req, res) => {
         const user = users[0];
 
         // Get followers count
-        const [followers] = await db.execute('SELECT COUNT(*) as count FROM follows WHERE following_id = ?', [user.id]);
-        user.followersCount = followers[0].count;
+        const { rows: followers } = await db.query('SELECT COUNT(*) as count FROM follows WHERE following_id = $1', [user.id]);
+        user.followersCount = parseInt(followers[0].count);
 
         // Get following count
-        const [following] = await db.execute('SELECT COUNT(*) as count FROM follows WHERE follower_id = ?', [user.id]);
-        user.followingCount = following[0].count;
+        const { rows: following } = await db.query('SELECT COUNT(*) as count FROM follows WHERE follower_id = $1', [user.id]);
+        user.followingCount = parseInt(following[0].count);
 
         // Get posts count
-        const [posts] = await db.execute('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [user.id]);
-        user.postsCount = posts[0].count;
+        const { rows: posts } = await db.query('SELECT COUNT(*) as count FROM posts WHERE user_id = $1', [user.id]);
+        user.postsCount = parseInt(posts[0].count);
 
         res.json(user);
     } catch (err) {
@@ -48,20 +48,20 @@ router.put('/:id', (req, res) => {
         // In a real app, strict auth middleware would check if req.user.id === req.params.id
 
         try {
-            let updateQuery = 'UPDATE users SET bio = ? WHERE id = ?';
+            let updateQuery = 'UPDATE users SET bio = $1 WHERE id = $2';
             let params = [bio, req.params.id];
 
             if (req.file) {
                 const profile_pic_url = `/uploads/${req.file.filename}`;
-                updateQuery = 'UPDATE users SET bio = ?, profile_pic_url = ? WHERE id = ?';
+                updateQuery = 'UPDATE users SET bio = $1, profile_pic_url = $2 WHERE id = $3';
                 params = [bio, profile_pic_url, req.params.id];
             } else if (req.body.profile_pic_url) {
                 // Keep handling generic URL if passed manually (though UI will use file now)
-                updateQuery = 'UPDATE users SET bio = ?, profile_pic_url = ? WHERE id = ?';
+                updateQuery = 'UPDATE users SET bio = $1, profile_pic_url = $2 WHERE id = $3';
                 params = [bio, req.body.profile_pic_url, req.params.id];
             }
 
-            await db.execute(updateQuery, params);
+            await db.query(updateQuery, params);
             res.json({ message: 'Profile updated' });
         } catch (err) {
             console.error(err);
@@ -80,8 +80,8 @@ router.post('/:id/follow', async (req, res) => {
     }
 
     try {
-        await db.execute(
-            'INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)',
+        await db.query(
+            'INSERT INTO follows (follower_id, following_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [currentUserId, targetUserId]
         );
         res.json({ message: 'Followed successfully' });

@@ -14,16 +14,17 @@ A modern, responsive social media application built with **Node.js**, **Express*
 
 ## Tech Stack
 
-*   **Backend**: Node.js, Express.js
-*   **Database**: MySQL
+*   **Backend**: Node.js, Express.js (Lambda compatible)
+*   **Database**: PostgreSQL (Supabase)
 *   **Frontend**: HTML5, CSS3, Vanilla JavaScript
 *   **Styling**: Custom CSS with Glassmorphism
-*   **File Uploads**: Multer
+*   **Hosting**: Netlify (Frontend + Serverless Functions)
 
 ## Prerequisites
 
-*   Node.js (v14 or higher)
-*   MySQL Server
+*   Node.js (v18 or higher recommended)
+*   Supabase Account
+*   Netlify Account
 
 ## Setup Instructions
 
@@ -38,26 +39,39 @@ A modern, responsive social media application built with **Node.js**, **Express*
     npm install
     ```
 
-3.  **Database Setup**
-    *   Create a MySQL database (e.g., `social_media_db`).
-    *   Run the schema script located in `database/schema.sql` to create the tables.
+3.  **Supabase Setup**
+    *   Create a new project on [Supabase.io](https://supabase.io).
+    *   Go to the SQL Editor in Supabase dashboard.
+    *   Copy content from `database/schema_postgres.sql` and run it to create tables.
+    *   Get your connection string from Project Settings -> Database -> Connection String -> URI.
 
 4.  **Environment Variables**
     *   Create a `.env` file in the root directory.
-    *   Add your database credentials:
+    *   Add your database connection string:
         ```env
-        DB_HOST=localhost
-        DB_USER=your_user
-        DB_PASSWORD=your_password
-        DB_NAME=social_media_db
+        DATABASE_URL="postgres://[user]:[password]@[host]:5432/[db_name]"
         PORT=3000
         ```
 
-5.  **Run the Server**
+5.  **Run Locally**
     ```bash
     npm start
     ```
     Or for development with auto-reload:
+    ```bash
+    npm run dev
+    ```
+
+6.  **Deploy to Netlify**
+    *   Login to Netlify and create a new site from Git.
+    *   Link to this repository.
+    *   **Build settings**:
+        *   Build command: (leave empty)
+        *   Publish directory: `public`
+    *   **Environment Variables** (in Netlify Site Settings):
+        *   Key: `DATABASE_URL`
+        *   Value: Your Supabase Connection String
+    *   Deploy! The backend will automatically be deployed as Netlify Functions.
     ```bash
     npm run dev
     ```

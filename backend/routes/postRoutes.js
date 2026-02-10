@@ -16,13 +16,13 @@ router.get('/', async (req, res) => {
 
         const params = [];
         if (user_id) {
-            query += ' WHERE p.user_id = ?';
+            query += ' WHERE p.user_id = $1';
             params.push(user_id);
         }
 
         query += ' ORDER BY p.created_at DESC';
 
-        const [posts] = await db.execute(query, params);
+        const { rows: posts } = await db.query(query, params);
         res.json(posts);
     } catch (err) {
         console.error(err);
@@ -50,11 +50,11 @@ router.post('/', (req, res) => {
             }
 
             try {
-                const [result] = await db.execute(
-                    'INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)',
+                const { rows: result } = await db.query(
+                    'INSERT INTO posts (user_id, content, image_url) VALUES ($1, $2, $3) RETURNING id',
                     [user_id, content, image_url]
                 );
-                res.status(201).json({ message: 'Post created', postId: result.insertId });
+                res.status(201).json({ message: 'Post created', postId: result[0].id });
             } catch (err) {
                 console.error(err);
                 res.status(500).json({ error: 'Server error' });
@@ -66,7 +66,7 @@ router.post('/', (req, res) => {
 // Delete post
 router.delete('/:id', async (req, res) => {
     try {
-        await db.execute('DELETE FROM posts WHERE id = ?', [req.params.id]);
+        await db.query('DELETE FROM posts WHERE id = $1', [req.params.id]);
         res.json({ message: 'Post deleted' });
     } catch (err) {
         console.error(err);
@@ -81,18 +81,18 @@ router.post('/:id/like', async (req, res) => {
 
     try {
         // Check if already liked
-        const [existing] = await db.execute(
-            'SELECT * FROM likes WHERE user_id = ? AND post_id = ?',
+        const { rows: existing } = await db.query(
+            'SELECT * FROM likes WHERE user_id = $1 AND post_id = $2',
             [user_id, post_id]
         );
 
         if (existing.length > 0) {
             // Unlike
-            await db.execute('DELETE FROM likes WHERE user_id = ? AND post_id = ?', [user_id, post_id]);
+            await db.query('DELETE FROM likes WHERE user_id = $1 AND post_id = $2', [user_id, post_id]);
             return res.json({ message: 'Unliked' });
         } else {
             // Like
-            await db.execute('INSERT INTO likes (user_id, post_id) VALUES (?, ?)', [user_id, post_id]);
+            await db.query('INSERT INTO likes (user_id, post_id) VALUES ($1, $2)', [user_id, post_id]);
             return res.json({ message: 'Liked' });
         }
     } catch (err) {
@@ -107,8 +107,8 @@ router.post('/:id/comments', async (req, res) => {
     const post_id = req.params.id;
 
     try {
-        await db.execute(
-            'INSERT INTO comments (post_id, user_id, content) VALUES (?, ?, ?)',
+        await db.query(
+            'INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)',
             [post_id, user_id, content]
         );
         res.status(201).json({ message: 'Comment added' });
@@ -125,10 +125,10 @@ router.get('/:id/comments', async (req, res) => {
             SELECT c.*, u.username, u.profile_pic_url 
             FROM comments c
             JOIN users u ON c.user_id = u.id
-            WHERE c.post_id = ?
+            WHERE c.post_id = $1
             ORDER BY c.created_at ASC
         `;
-        const [comments] = await db.execute(query, [req.params.id]);
+        const { rows: comments } = await db.query(query, [req.params.id]);
         res.json(comments);
     } catch (err) {
         console.error(err);

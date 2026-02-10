@@ -1,14 +1,27 @@
-const mysql = require('mysql2');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'social_media_app',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+const pool = new Pool({
+    // Use connection string from env (Supabase provides this)
+    connectionString: process.env.DATABASE_URL,
+    // SSL is required for most cloud DBs like Supabase
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
-module.exports = pool.promise();
+// Test connection
+pool.connect((err, client, release) => {
+    if (err) {
+        return console.error('Error acquiring client', err.stack);
+    }
+    client.query('SELECT NOW()', (err, result) => {
+        release();
+        if (err) {
+            return console.error('Error executing query', err.stack);
+        }
+        console.log('Connected to Database:', result.rows[0]);
+    });
+});
+
+module.exports = pool;
