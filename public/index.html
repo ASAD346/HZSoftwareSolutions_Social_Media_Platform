@@ -60,7 +60,7 @@
         const toggleAuth = document.getElementById('toggleAuth');
         const toggleLink = toggleAuth.querySelector('a');
 
-        toggleLink.addEventListener('click', (e) => {
+        const toggleHandler = (e) => {
             e.preventDefault();
             if (loginForm.classList.contains('hidden')) {
                 loginForm.classList.remove('hidden');
@@ -72,8 +72,10 @@
                 toggleAuth.innerHTML = 'Already have an account? <a href="#">Log in</a>';
             }
             // Re-bind listener because innerHTML replaced elements
-            toggleAuth.querySelector('a').addEventListener('click', arguments.callee);
-        });
+            toggleAuth.querySelector('a').addEventListener('click', toggleHandler);
+        };
+
+        toggleLink.addEventListener('click', toggleHandler);
 
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
