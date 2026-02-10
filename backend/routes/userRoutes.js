@@ -52,7 +52,8 @@ router.put('/:id', (req, res) => {
             let params = [bio, req.params.id];
 
             if (req.file) {
-                const profile_pic_url = `/uploads/${req.file.filename}`;
+                // req.file.buffer is available here
+                const profile_pic_url = null; // Removed local file path construction
                 updateQuery = 'UPDATE users SET bio = $1, profile_pic_url = $2 WHERE id = $3';
                 params = [bio, profile_pic_url, req.params.id];
             } else if (req.body.profile_pic_url) {

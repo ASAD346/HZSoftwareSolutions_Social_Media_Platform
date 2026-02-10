@@ -42,7 +42,11 @@ router.post('/', (req, res) => {
             let image_url = null;
 
             if (req.file) {
-                image_url = `/uploads/${req.file.filename}`;
+                // Since we are using memoryStorage on Netlify, we can't save files locally.
+                // Normally here you would upload req.file.buffer to S3/Supabase Storage.
+                // For now, we'll just set a placeholder URL or skip it to prevent crashing.
+                console.log('File received in memory:', req.file.originalname);
+                image_url = null; // TODO: Implement Cloud Storage upload
             }
 
             if (!user_id || !content) {
