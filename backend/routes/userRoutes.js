@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const supabase = require('../config/supabaseClient');
 
 // Get generic user profile by ID
 router.get('/:id', async (req, res) => {
@@ -52,8 +53,33 @@ router.put('/:id', (req, res) => {
             let params = [bio, req.params.id];
 
             if (req.file) {
-                // req.file.buffer is available here
-                const profile_pic_url = null; // Removed local file path construction
+                // Upload to Supabase Storage
+                if (!supabase) {
+                    return res.status(500).json({ error: 'Storage not configured (Missing SUPABASE_URL/KEY)' });
+                }
+
+                const fileExt = req.file.originalname.split('.').pop();
+                const fileName = `${req.params.id}-${Date.now()}.${fileExt}`;
+                const filePath = `profile-pics/${fileName}`;
+
+                const { data, error } = await supabase.storage
+                    .from('images') // Ensure you create a bucket named 'images' in Supabase
+                    .upload(filePath, req.file.buffer, {
+                        contentType: req.file.mimetype,
+                        upsert: true
+                    });
+
+                if (error) {
+                    console.error('Storage upload error:', error);
+                    return res.status(500).json({ error: 'Failed to upload image' });
+                }
+
+                // Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('images')
+                    .getPublicUrl(filePath);
+
+                const profile_pic_url = publicUrl;
                 updateQuery = 'UPDATE users SET bio = $1, profile_pic_url = $2 WHERE id = $3';
                 params = [bio, profile_pic_url, req.params.id];
             } else if (req.body.profile_pic_url) {

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const supabase = require('../config/supabaseClient');
 
 // Get all posts (Feed)
 router.get('/', async (req, res) => {
@@ -42,11 +43,32 @@ router.post('/', (req, res) => {
             let image_url = null;
 
             if (req.file) {
-                // Since we are using memoryStorage on Netlify, we can't save files locally.
-                // Normally here you would upload req.file.buffer to S3/Supabase Storage.
-                // For now, we'll just set a placeholder URL or skip it to prevent crashing.
-                console.log('File received in memory:', req.file.originalname);
-                image_url = null; // TODO: Implement Cloud Storage upload
+                // Upload to Supabase Storage
+                if (!supabase) {
+                    return res.status(500).json({ error: 'Storage not configured (Missing SUPABASE_URL/KEY)' });
+                }
+
+                const fileExt = req.file.originalname.split('.').pop();
+                const fileName = `posts/${user_id}-${Date.now()}.${fileExt}`;
+
+                const { data, error } = await supabase.storage
+                    .from('images') // Ensure you create a bucket named 'images' in Supabase
+                    .upload(fileName, req.file.buffer, {
+                        contentType: req.file.mimetype,
+                        upsert: true
+                    });
+
+                if (error) {
+                    console.error('Storage upload error:', error);
+                    return res.status(500).json({ error: 'Failed to upload image' });
+                }
+
+                // Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('images')
+                    .getPublicUrl(fileName);
+
+                image_url = publicUrl;
             }
 
             if (!user_id || !content) {
